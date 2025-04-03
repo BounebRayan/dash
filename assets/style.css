@@ -1,0 +1,182 @@
+/* Light Theme for Crypto Analytics Dashboard */
+
+/* Main Layout */
+body {
+    font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+    margin: 0;
+}
+
+.container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Sidebar Styles */
+.sidebar {
+    width: 250px;
+    background-color: #ffffff;
+    padding: 15px;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+    overflow-y: auto;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    z-index: 10;
+    font-size: 14px;
+}
+
+.sidebar-header {
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.sidebar h2 {
+    font-size: 16px;
+    margin-bottom: 8px;
+    color: #495057;
+}
+
+.sidebar-section {
+    margin-bottom: 15px;
+}
+
+/* Content Styles */
+.content {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+/* Card Styles */
+.card-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.metric-card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    padding: 12px;
+    transition: all 0.3s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.metric-value {
+    font-size: 20px;
+    font-weight: 600;
+    color: #0066cc;
+    margin: 5px 0;
+}
+
+.metric-title {
+    font-size: 12px;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Graph Container */
+.graph-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    padding: 12px;
+    margin-bottom: 15px;
+}
+
+.graph-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #343a40;
+}
+
+/* Charts Section Layout */
+.charts-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.charts-section .graph-container:first-child {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 992px) {
+    .charts-section {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Table Styles */
+.table-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    padding: 20px;
+    margin-bottom: 20px;
+    overflow-x: auto;
+}
+
+/* Form Control Styles */
+.Select-control, .DateRangePickerInput {
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+}
+
+.Select-control:hover {
+    border-color: #adb5bd;
+}
+
+.Select.is-focused > .Select-control {
+    border-color: #0066cc;
+    box-shadow: 0 0 0 1px #0066cc;
+}
+
+/* Button Styles */
+.button {
+    background-color: #0066cc;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background-color 0.2s;
+}
+
+.button:hover {
+    background-color: #0056b3;
+}
+
+/* Radio and Checkbox Styles */
+.radio-group, .checkbox-group {
+    margin-bottom: 15px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+    }
+    
+    .card-container {
+        grid-template-columns: 1fr;
+    }
+} 
