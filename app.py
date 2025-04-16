@@ -7,6 +7,9 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import os
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+
 
 # Import data generation functions
 from data import generate_protocol_data, generate_pool_data, generate_transaction_data, get_current_metrics
@@ -610,9 +613,11 @@ def update_metric_cards(n_clicks, protocol, chains, end_date):
     df = protocol_data.copy()
     df = df[df["protocol"] == protocol]
     df = df[df["chain"].isin(chains)]
-    
+
     # Get latest date data
-    latest_data = df[df["date"] == end_date]
+    df_before_or_equal = df[df["date"] <= end_date]
+    latest_valid_date = df_before_or_equal["date"].max()
+    latest_data = df[df["date"] == latest_valid_date]
     
     # Calculate metrics
     tvl = latest_data["tvl"].sum()
