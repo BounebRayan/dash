@@ -1,59 +1,309 @@
 import pandas as pd
+import requests
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta,date
 
-# Generate date range for time series data
+# Slug mapping: protocol name -> DefiLlama slug
+PROTOCOL_SLUGS = {
+    'Aave': 'aave',
+    'Drift': 'drift',
+    'Fluid': 'fluid',
+    'Aerodrome': 'aerodrome',
+    'Ethena': 'ethena',
+}
+
+CHAINS_OF_INTEREST = ['Ethereum', 'Polygon', 'Arbitrum', 'OP Mainnet', 'Base','Solana']
+
 def generate_date_range(days=180):
-    end_date = datetime.now()
+    end_date = date.today()
     start_date = end_date - timedelta(days=days)
     return pd.date_range(start=start_date, end=end_date, freq='D')
 
-# Protocol-Level Data (Type 1)
-def generate_protocol_data():
-    protocols = ['Uniswap', 'Aave', 'Compound', 'Curve', 'dYdX']
-    chains = ['Ethereum', 'Polygon', 'Arbitrum', 'Optimism', 'Base']
-    date_range = generate_date_range()
-    
-    data = []
-    
-    for protocol in protocols:
-        # Base values differ by protocol
-        base_tvl = np.random.uniform(500000000, 2000000000)
-        base_fees = np.random.uniform(50000, 500000)
-        base_revenue = base_fees * np.random.uniform(0.1, 0.5)
-        base_expenses = base_revenue * np.random.uniform(0.2, 0.8)
-        base_volume = np.random.uniform(10000000, 100000000)
-        
-        # Time series with trends and some volatility
-        for date in date_range:
-            # Add time-based trends (generally upward with some volatility)
-            day_factor = 1 + 0.001 * (date_range.get_loc(date) - len(date_range)/2) 
-            day_factor *= np.random.uniform(0.95, 1.05)  # Add some randomness
-            
-            # Data for this day
-            tvl = base_tvl * day_factor
-            fees = base_fees * day_factor
-            revenue = fees * np.random.uniform(0.1, 0.5)
-            expenses = revenue * np.random.uniform(0.2, 0.8)
-            volume = base_volume * day_factor
-            
-            # Split across chains
-            for chain in chains:
-                chain_factor = np.random.uniform(0.05, 0.5)  # Different distribution per chain
-                
-                data.append({
-                    'date': date,
-                    'protocol': protocol,
-                    'chain': chain,
-                    'tvl': tvl * chain_factor,
-                    'fees': fees * chain_factor,
-                    'revenue': revenue * chain_factor,
-                    'expenses': expenses * chain_factor,
-                    'volume': volume * chain_factor
-                })
-    
-    return pd.DataFrame(data)
+def fetch_protocol_tvl(slug):
+    url = f"https://api.llama.fi/protocol/{slug}"
+    response = requests.get(url)
+    if response.ok:
+        return response.json()
+    else:
+        print(f"Failed to fetch TVL for {slug}")
+        return None
 
+def fetch_protocol_fees(slug):
+    url = f"https://api.llama.fi/summary/fees/{slug}?dataType=dailyFees"
+    response = requests.get(url)
+    if response.ok:
+        return response.json()
+    else:
+        print(f"Failed to fetch fees for {slug}")
+        return None
+
+def fetch_protocol_revenue(slug):
+    url = f"https://api.llama.fi/summary/fees/{slug}?dataType=dailyRevenue"
+    response = requests.get(url)
+    if response.ok:
+        return response.json()
+    else:
+        print(f"Failed to fetch fees for {slug}")
+        return None
+    
+def fetch_protocol_volume(slug):
+    url = f"https://api.llama.fi/summary/dexs/{slug}?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=false&dataType=dailyVolume"
+    response = requests.get(url)
+    if response.ok:
+        return response.json()
+    else:
+        print(f"Failed to fetch volume for {slug}")
+        return None
+       
+    
+def tvl_to_df(tvl_data, chain):
+    try:
+        tvl_series = tvl_data.get("chainTvls", {}).get(chain, {}).get("tvl", [])
+        return pd.DataFrame({
+            "date": pd.to_datetime([e["date"] for e in tvl_series], unit='s'),  # datetime64[ns]
+            "tvl": [e.get("totalLiquidityUSD", np.nan) for e in tvl_series]
+        })
+    except Exception as e:
+        print(f"Error in tvl_to_df: {e}")
+        return pd.DataFrame()
+
+
+
+
+def fees_to_df(fees_data, chain):
+    try:
+        daily_data = fees_data.get("totalDataChartBreakdown", [])
+        parsed = []
+
+        for entry in daily_data:
+            timestamp, breakdown = entry
+            chain_data = breakdown.get(chain.lower())
+
+            if not chain_data:
+                continue
+
+            # Sum all components (e.g. Fluid Lending, Fluid DEX)
+            total_fees = sum(chain_data.values())
+            parsed.append({
+                "date": pd.to_datetime(timestamp, unit="s"),
+                "fees": total_fees
+            })
+
+        return pd.DataFrame(parsed)
+    except Exception as e:
+        print(f"Error in fees_to_df for chain {chain}: {e}")
+        return pd.DataFrame()
+
+
+def revenue_to_df(fees_data, chain):
+    try:
+        daily_data = fees_data.get("totalDataChartBreakdown", [])
+        parsed = []
+
+        for entry in daily_data:
+            timestamp, breakdown = entry
+            chain_data = breakdown.get(chain.lower())
+
+            if not chain_data:
+                continue
+
+            # Sum all components (e.g. Fluid Lending, Fluid DEX)
+            total_revenue = sum(chain_data.values())
+            parsed.append({
+                "date": pd.to_datetime(timestamp, unit="s"),
+                "revenue": total_revenue
+            })
+
+        return pd.DataFrame(parsed)
+    except Exception as e:
+        print(f"Error in fees_to_df for chain {chain}: {e}")
+        return pd.DataFrame()
+
+def volume_to_df(volume_data, chain):
+    try:
+        daily_data = volume_data.get("totalDataChartBreakdown", [])
+        parsed = []
+
+        for entry in daily_data:
+            timestamp, breakdown = entry
+            chain_data = breakdown.get(chain.lower())
+
+            if not chain_data:
+                continue
+
+            # Sum all components (e.g. Fluid Lending, Fluid DEX)
+            total_volume = sum(chain_data.values())
+            parsed.append({
+                "date": pd.to_datetime(timestamp, unit="s"),
+                "volume": total_volume
+            })
+
+        return pd.DataFrame(parsed)
+    except Exception as e:
+        print(f"Error in fees_to_df for chain {chain}: {e}")
+        return pd.DataFrame()
+
+def generate_protocol_data(days=180):
+    date_range = generate_date_range(days)
+    base_df = pd.DataFrame({"date": date_range})
+
+    all_data = []
+
+    for protocol_name, slug in PROTOCOL_SLUGS.items():
+        tvl_raw = fetch_protocol_tvl(slug)
+        fees_raw = fetch_protocol_fees(slug)
+        revenue_raw = fetch_protocol_revenue(slug)
+        volume_raw = fetch_protocol_volume(slug)
+
+        for chain in CHAINS_OF_INTEREST:
+            df = base_df.copy()
+            tvl_df = tvl_to_df(tvl_raw, chain)
+            if not tvl_df.empty:
+                df = df.merge(tvl_df, on="date", how="left")
+            else:
+                df['tvl'] = np.nan
+            
+            fees_df = fees_to_df(fees_raw, chain) if fees_raw else pd.DataFrame()
+            if not fees_df.empty:
+                df = df.merge(fees_df, on="date", how="left")
+            else:
+                df['fees'] = np.nan
+            
+            revenue_df = revenue_to_df(revenue_raw, chain) if revenue_raw else pd.DataFrame()
+            if not revenue_df.empty:
+                df = df.merge(revenue_df, on="date", how="left")
+            else:
+                df['revenue'] = np.nan
+                
+            volume_df = volume_to_df(revenue_raw, chain) if volume_raw else pd.DataFrame()
+            if not volume_df.empty:
+                df = df.merge(volume_df, on="date", how="left")
+            else:
+                df['volume'] = np.nan
+
+            # Fill missing values
+            df[["tvl","fees","revenue","volume"]] = df[["tvl","fees","revenue","volume"]].ffill()
+
+            # Add identifiers
+            df["protocol"] = protocol_name
+            df["chain"] = chain
+            df["expenses"] = df["fees"] - df["revenue"]  # optional placeholder
+
+            all_data.append(df)
+
+    if all_data:
+        return pd.concat(all_data, ignore_index=True)
+    else:
+        return pd.DataFrame()
+
+
+
+# Get metrics for the cards
+def get_current_metrics():
+    protocol_df = generate_protocol_data()
+    latest_date = protocol_df['date'].max()
+
+    latest_data = protocol_df[protocol_df['date'] == latest_date]
+
+    return {
+        'total_tvl': latest_data['tvl'].sum(),
+        'total_fees': latest_data['fees'].sum(),
+        'total_revenue': latest_data['revenue'].sum(),
+        'total_volume': latest_data['volume'].sum(),
+        'active_chains': len(latest_data['chain']),
+        'active_protocols': len(latest_data['protocol'].unique())
+    } 
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 # Pool-Level Data (Type 2)
 def generate_pool_data():
     pools = [
@@ -180,17 +430,3 @@ def generate_transaction_data(n_transactions=100):
     
     return pd.DataFrame(data)
 
-# Get metrics for the cards
-def get_current_metrics():
-    protocol_df = generate_protocol_data()
-    latest_date = protocol_df['date'].max()
-    latest_data = protocol_df[protocol_df['date'] == latest_date]
-    
-    return {
-        'total_tvl': latest_data['tvl'].sum(),
-        'total_fees': latest_data['fees'].sum(),
-        'total_revenue': latest_data['revenue'].sum(),
-        'total_volume': latest_data['volume'].sum(),
-        'active_chains': len(latest_data['chain'].unique()),
-        'active_protocols': len(latest_data['protocol'].unique())
-    } 
